@@ -1,0 +1,23 @@
+Ideally we want to be able to manipulate the position in this way:
+  position.makeMove(m);
+  position.unmakeMove(m);
+Calling both make and unmake with the same move object.
+
+Every move requires these three things in order to make that move:
+  from square
+  to square
+  move type
+
+Additional information is required in order to unmake the move. For example, if
+a capture is made, we need to remember what piece was captured in order to
+unmake that move.
+
+Unmaking moves requires this information from prior to the move:
+  clock
+  en passant file
+  castling rights
+  captured piece type
+
+Note that for en passant, it is sufficient to keep track of only the file on
+which en passant capture is possible. When making or unmaking the move, the
+rank of the captured pawn can be derived from whose turn it is.

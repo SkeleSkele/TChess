@@ -10,13 +10,10 @@ LIBRARIES  :=
 all: $(BIN)/$(EXECUTABLE)
 
 run: clean all
-	@echo "Executing..."
 	./$(BIN)/$(EXECUTABLE)
 
 $(BIN)/$(EXECUTABLE): $(SRC)/*.cpp
-	@echo "Building..."
 	$(CXX) $(CXX_FLAGS) -I$(INCLUDE) $^ -o $@ $(LIBRARIES)
 
 clean:
-	@echo "Clearing..."
 	-rm $(BIN)/*

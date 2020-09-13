@@ -2,16 +2,16 @@
 #define POSITION_H
 
 #include "types.h"
+#include "move.h"
 
 class Position {
   public:
     Position();
+    Position(std::string);
 
     void initPieces();
     void printBoard();
-    Piece getPiece(int);
-
-    static std::string pieceGraphic(Piece);
+    void makeMove(Move&);
 
   private:
     /**
@@ -28,12 +28,33 @@ class Position {
      * 1 |0  1  2  3  4  5  6  7 | 1
      *   +-----------------------+
      *    a  b  c  d  e  f  g  h
-    **/
+     */
     U64 bbs[12];
-    U8 castling; // 0,1,2,3 -> WK, WQ, BK, BQ
-    U8 epSquare; // -1 means no square
-    Color player;
+
+    /**
+     * 76543210
+     *   7: white O-O-O
+     *   6: white O-O
+     *   5: black O-O-O
+     *   4: black O-O
+     *   3: en passant flag (1 if possible)
+     * 2-0: en passant file (irrelevant if bit 3 is 0)
+     */
+    U8 flags;
+    U8 player; 
     U16 clock;
+
+    int getEPFile();
+    void setEPFile(int);
+    void placePiece(Piece, int);
+    void movePiece(Piece, int, int);
+    Piece getPiece(int);
+    Piece removePiece(int);
+    Piece removePiece(Piece, int);
+
+    static int frToSquare(int, int);
+    static std::string pieceGraphic(Piece);
+    static Piece swapColor(Piece);
 };
 
 #endif
