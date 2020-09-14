@@ -217,27 +217,25 @@ void Position::makeMove(Move& move) {
 
   // Update castling flags if necessary.
   if (move.getFrom() == 0 || move.getTo() == 0)
-    flags &= 0x7f;
+    setCastlingFlag(-1, Color::WHITE);
   if (move.getFrom() == 7 || move.getTo() == 7)
-    flags &= 0xbf;
+    setCastlingFlag(1, Color::WHITE);
   if (move.getFrom() == 56 || move.getTo() == 56)
-    flags &= 0xdf;
+    setCastlingFlag(-1, Color::BLACK);
   if (move.getFrom() == 63 || move.getTo() == 63)
-    flags &= 0xef;
+    setCastlingFlag(1, Color::BLACK);
   if (movingPiece == Piece::W_KING)
-    flags &= 0x3f;
+    setCastlingFlag(0, Color::WHITE);
   if (movingPiece == Piece::B_KING)
-    flags &= 0xcf;
+    setCastlingFlag(0, Color::BLACK);
 
   // Update en passant flag.
-  flags &= 0xf0;
   if (move.getType() == MoveType::DOUBLE_PAWN_PUSH) {
-    U8 mask = 0x08 | (move.getFrom() % 8);
-    flags |= mask;
+    setEPFile(move.getFrom() % 8);
   }
 
   // Switch player.
-  player = (player + 1) % 2;
+  switchPlayer();
 
   // Increment clock, or reset it.
   if (movingPiece == Piece::W_PAWN || movingPiece == Piece::B_PAWN)
@@ -248,6 +246,58 @@ void Position::makeMove(Move& move) {
     clock = 0;
   else
     clock++;
+}
+
+void Position::unmakeMove(Move& move) {
+  // Switch player back
+  switchPlayer();
+
+  // Move Piece back where it came from
+  Piece movedPiece = removePiece(move.getTo());
+  if (move.getPromotedPiece() != Piece::NO_PIECE) {
+    if (player == Color::WHITE)
+      movedPiece = W_PAWN;
+    else
+      movedPiece = B_PAWN;
+  }
+  placePiece(movedPiece, move.getFrom());
+
+  // Restore captured piece
+  if (move.getType() == MoveType::EP_CAPTURE) {
+    if (player == Color::WHITE)
+      placePiece(Piece::B_PAWN, move.getTo() - 8);
+    else
+      placePiece(Piece::W_PAWN, move.getTo() + 8);
+  }
+  else if (move.isCapture())
+    placePiece(move.getCapturedPiece(), move.getTo());
+
+  // For castling moves, move the rook back
+  if (move.getType() == MoveType::LONG_CASTLE) {
+    if (player == Color::WHITE)
+      movePiece(W_ROOK, 3, 0);
+    else
+      movePiece(B_ROOK, 59, 56);
+  }
+  else if (move.getType() == MoveType::SHORT_CASTLE) {
+    if (player == Color::WHITE)
+      movePiece(W_ROOK, 5, 7);
+    else
+      movePiece(B_ROOK, 61, 63);
+  }
+
+  // Restore flags and clock
+  flags = move.getFlags();
+  clock = move.getClock();
+}
+
+// Switches whose player's turn it is and returns that value.
+Color Position::switchPlayer() {
+  if (player == Color::WHITE)
+    player = Color::BLACK;
+  else
+    player = Color::WHITE;
+  return player;
 }
 
 // Returns the 0-indexed file on which en-passant is possible, or -1 if en
@@ -270,14 +320,37 @@ void Position::setEPFile(int f) {
   flags |= 0x08;
 }
 
+// Disables the castling rights on the given side and color. Use -1 for
+// queenside, +1 for kingside, or 0 for both.
+void Position::setCastlingFlag(int side, Color c) {
+  // Disable long castle
+  if (side <= 0) {
+    if (c == Color::WHITE)
+      flags &= 0x7f;
+    else
+      flags &= 0xdf;
+  }
+  // Disable short castle
+  if (side >= 0) {
+    if (c == Color::WHITE)
+      flags &= 0xbf;
+    else
+      flags &= 0xef;
+  }
+}
+
 // Updates bitboards to put the piece in the given square.
 void Position::placePiece(Piece piece, int square) {
+  if (piece == Piece::NO_PIECE)
+    return;
   U64 mask = ONE << square;
   bbs[piece] |= mask;
 }
 
 // Moves the Piece from one square to the other
 void Position::movePiece(Piece piece, int from, int to) {
+  if (piece == Piece::NO_PIECE)
+    return;
   removePiece(piece, from);
   placePiece(piece, to);
 }
@@ -308,6 +381,8 @@ Piece Position::removePiece(int square) {
 // Faster than the above method, for use when you already know what the Piece
 // is.
 Piece Position::removePiece(Piece piece, int square) {
+  if (piece == Piece::NO_PIECE)
+    return Piece::NO_PIECE;
   U64 mask = ~(ONE << square);
   bbs[piece] &= mask;
   return piece;

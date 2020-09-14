@@ -37,6 +37,18 @@ MoveType Move::getType() {
   return type;
 }
 
+Piece Move::getCapturedPiece() {
+  return capturedPiece;
+}
+
+U8 Move::getFlags() {
+  return savedFlags;
+}
+
+U16 Move::getClock() {
+  return savedClock;
+}
+
 // If the move is a promotion, this will return the Piece corresponding to the
 // new Piece. If it isn't a promotion, returns NO_PIECE.
 Piece Move::getPromotedPiece() {

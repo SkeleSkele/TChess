@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <fstream>
 #include <string>
+#include <stack>
 
 #include "position.h"
 #include "types.h"
@@ -31,6 +32,9 @@ void testMakeMove(std::string filename) {
   getline(file, line);
   Position p(line);
   p.printBoard();
+
+  // Store moves in a stack so we can unmake them later
+  std::stack<Move> moveStack;
   
   // Loop through lines
   int lineNum = 2;
@@ -57,8 +61,19 @@ void testMakeMove(std::string filename) {
     std::cout << "Making move " << lineNum << std::endl;
     Move m((U8)from, (U8)to, (MoveType)moveType);
     p.makeMove(m);
+    moveStack.push(m);
     p.printBoard();
   }
   file.close();
+
+  // TODO: while moves are being tested, add them to a stack. Once all moves
+  // have been tested, unmake all the moves by popping the stack.
+  while (!moveStack.empty()) {
+    std::cout << "Unmaking move" << std::endl;
+    Move m = moveStack.top();
+    p.unmakeMove(m);
+    p.printBoard();
+    moveStack.pop();
+  }
   std::cout << "Test complete." << std::endl;
 }

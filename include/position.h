@@ -12,6 +12,7 @@ class Position {
     void initPieces();
     void printBoard();
     void makeMove(Move&);
+    void unmakeMove(Move&);
 
   private:
     /**
@@ -41,11 +42,13 @@ class Position {
      * 2-0: en passant file (irrelevant if bit 3 is 0)
      */
     U8 flags;
-    U8 player; 
+    Color player; 
     U16 clock;
 
+    Color switchPlayer();
     int getEPFile();
     void setEPFile(int);
+    void setCastlingFlag(int, Color);
     void placePiece(Piece, int);
     void movePiece(Piece, int, int);
     Piece getPiece(int);
