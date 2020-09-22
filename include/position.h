@@ -79,6 +79,8 @@ class Position {
     U64 getOccupied(Color);
     bool inCheck(Color);
     bool isLegalMove(Move&);
+    bool canCastle(Color, int);
+    void addCastlingMoveIfAble(std::vector<Move>&, Color, int);
     
     // Functions for calculating the masks
     static U64 calculateRookAttackOnEmpty(int, int);

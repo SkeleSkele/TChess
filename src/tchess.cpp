@@ -18,6 +18,9 @@ int main(int argc, char** argv) {
     testMakeMove(argv[1]);
     return 0;
   }
+  
+  // No arg run
+  Position::populateMaskArrays();
 }
 
 void testMakeMove(std::string filename) {

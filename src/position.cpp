@@ -387,12 +387,19 @@ std::vector<Move> Position::getLegalMoves() {
     }
   }
 
+  // Add castling moves if appropriate
+  if (!inCheck(player)) {
+    addCastlingMoveIfAble(moves, player, -1);
+    addCastlingMoveIfAble(moves, player, 1);
+  }
+
   // Go through every move and exclude any which would leave the friendly king
   // in check
   std::vector<Move> legalMoves;
   for (unsigned int i = 0; i < moves.size(); i++)
     if (isLegalMove(moves[i]))
       legalMoves.push_back(moves[i]);
+    
 
   return legalMoves;
 }
@@ -574,6 +581,64 @@ bool Position::isLegalMove(Move& move) {
   bool v = !inCheck(oppositeColor(player));
   unmakeMove(move);
   return v;
+}
+
+// Returns true if the given color can castle in the given direction (negative
+// dir for queenside, positive or 0 for kingside)
+bool Position::canCastle(Color c, int dir) {
+  U8 mask = 0x10;
+  if (c == Color::WHITE)
+    mask <<= 2;
+  if (dir < 0)
+    mask <<= 1;
+  return flags & mask;
+}
+
+// Adds castling for the given color and side (negative for O-O-O, nonnegative
+// for O-O) to the vector of Moves if "able". Here "able" means precisely the
+// following:
+// 1. The appropriate castling flag is on.
+// 2. There are no pieces between the king and the castling rook.
+// 3. The intermediate square is not under attack by any enemy piece. (This is
+// sufficient to know that the king does not "castle through check" given that
+// he is not in check to begin with, see below)
+//
+// Note that this function does NOT consider whether the king is in check to
+// begin with (caller should determine this), or if it will end up in check 
+// (the move list will eventually be cleared of those sorts of moves)
+void Position::addCastlingMoveIfAble(std::vector<Move>& v, Color c, int dir) {
+  // Check if player has right to castle
+  if (!canCastle(c, dir))
+    return;
+
+  // Check if the spaces between king and rook are vacant
+  U64 mask;
+  if (c == Color::WHITE && dir < 0) mask = 0x000000000000000e;
+  else if (c == Color::WHITE && dir >= 0) mask = 0x0000000000000060;
+  else if (c == Color::BLACK && dir < 0) mask = 0x0e00000000000000;
+  else if (c == Color::BLACK && dir >= 0) mask = 0x6000000000000000;
+  if (getOccupied() & mask)
+    return;
+
+  // Check if intermediate square is under attack
+  int sq;
+  if (c == Color::WHITE && dir < 0) sq = 3;
+  else if (c == Color::WHITE && dir >= 0) sq = 5;
+  else if (c == Color::BLACK && dir < 0) sq = 59;
+  else if (c == Color::BLACK && dir >= 0) sq = 61;
+  U64 a = getAttackedSquares(oppositeColor(c));
+  if (a & (ONE << sq))
+    return;
+
+  // Move is okay, add it to the list
+  if (c == Color::WHITE && dir < 0)
+    v.push_back(Move(4, 2, MoveType::LONG_CASTLE));
+  else if (c == Color::WHITE && dir >= 0)
+    v.push_back(Move(4, 6, MoveType::SHORT_CASTLE));
+  else if (c == Color::BLACK && dir < 0) 
+    v.push_back(Move(60, 58, MoveType::LONG_CASTLE));
+  else if (c == Color::BLACK && dir >= 0) 
+    v.push_back(Move(60, 62, MoveType::SHORT_CASTLE));
 }
 
 // Populates the attackOnEmpty array
