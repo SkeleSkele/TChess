@@ -353,7 +353,7 @@ std::vector<Move> Position::getLegalMoves() {
   int epSquare = getEPFile();
   if (epSquare != -1)
     epSquare += (p == Piece::W_PAWN) ? 40 : 16;
-
+  
   // For each individual pawn
   for (U64 b = bbs[p]; b != 0; b &= b - 1) {
     int from = bitscan(b);
