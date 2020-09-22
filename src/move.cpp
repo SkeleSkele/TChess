@@ -1,6 +1,8 @@
 #include "move.h"
 #include "types.h"
 
+#include <iostream>
+
 Move::Move() {
   from = 0;
   to   = 0;
@@ -94,4 +96,9 @@ int Move::getCastlingDirection() {
     return 1;
   else
     return 0;
+}
+
+// For debugging, prints out from, to, piece type
+void Move::debugPrint() {
+  std::cout << (int)from << " " << (int)to << " " << (int)type << std::endl;
 }

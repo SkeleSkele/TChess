@@ -4,15 +4,22 @@
 #include "types.h"
 #include "move.h"
 
+#include <vector>
+
 class Position {
   public:
     Position();
     Position(std::string);
 
     void initPieces();
+    void loadFEN(std::string);
     void printBoard();
+    static void printBitBoard(U64);
     void makeMove(Move&);
     void unmakeMove(Move&);
+    std::vector<Move> getLegalMoves();
+
+    static void populateMaskArrays();
 
   private:
     /**
@@ -45,19 +52,56 @@ class Position {
     Color player; 
     U16 clock;
 
+    // Masks used for fast calculations
+    static U64 attackOnEmpty[5][64];
+    static U64 blockerMask[5][64];
+    static U64 behindMask[64][64];
+
+    // Constants for De Bruijn multiplication
+    static U64 deb;
+    static int debArray[64];
+
+    // Functions for manipulating the board
     Color switchPlayer();
-    int getEPFile();
     void setEPFile(int);
     void setCastlingFlag(int, Color);
     void placePiece(Piece, int);
     void movePiece(Piece, int, int);
-    Piece getPiece(int);
     Piece removePiece(int);
     Piece removePiece(Piece, int);
 
+    // Functions for retrieving board information
+    int getEPFile();
+    Piece getPiece(int);
+    U64 getAttackedSquares(Piece, int);
+    U64 getAttackedSquares(Color);
+    U64 getOccupied();
+    U64 getOccupied(Color);
+    bool inCheck(Color);
+    bool isLegalMove(Move&);
+    
+    // Functions for calculating the masks
+    static U64 calculateRookAttackOnEmpty(int, int);
+    static U64 calculateBishopAttackOnEmpty(int, int);
+    static U64 calculateKingAttackOnEmpty(int, int);
+    static U64 calculateKnightAttackOnEmpty(int, int);
+    static U64 calculateRookBlockerMask(int, int);
+    static U64 calculateBishopBlockerMask(int, int);
+    static U64 calculateBehindMask(int, int, int, int);
+
+    // Miscellaneous utility functions
+    static void addPawnMoves(std::vector<Move>&, int, int);
+    static bool inBounds(int, int);
     static int frToSquare(int, int);
+    static std::string frToString(int, int);
+    static int squareToRank(int);
+    static int squareToFile(int);
     static std::string pieceGraphic(Piece);
     static Piece swapColor(Piece);
+    static Piece makeColor(Piece, Color);
+    static Color getColor(Piece);
+    static Color oppositeColor(Color);
+    static int bitscan(U64);
 };
 
 #endif

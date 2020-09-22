@@ -1,22 +1,23 @@
+#include "position.h"
+#include "types.h"
+#include "move.h"
+
 #include <iostream>
 #include <unistd.h>
 #include <fstream>
 #include <string>
 #include <stack>
-
-#include "position.h"
-#include "types.h"
-#include "move.h"
+#include <vector>
 
 void testMakeMove(std::string);
+int bitscan(U64);
 
 int main(int argc, char** argv) {
-  if (argc != 2) {
-    std::cout << "Please provide a test file." << std::endl;
+  // Run test file
+  if (argc == 2) {
+    testMakeMove(argv[1]);
     return 0;
   }
-  
-  testMakeMove(argv[1]);
 }
 
 void testMakeMove(std::string filename) {
@@ -66,8 +67,6 @@ void testMakeMove(std::string filename) {
   }
   file.close();
 
-  // TODO: while moves are being tested, add them to a stack. Once all moves
-  // have been tested, unmake all the moves by popping the stack.
   while (!moveStack.empty()) {
     std::cout << "Unmaking move" << std::endl;
     Move m = moveStack.top();
@@ -77,3 +76,4 @@ void testMakeMove(std::string filename) {
   }
   std::cout << "Test complete." << std::endl;
 }
+

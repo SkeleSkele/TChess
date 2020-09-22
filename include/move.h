@@ -34,6 +34,9 @@ class Move {
     bool isCapture();
     int getCastlingDirection();
 
+    // debugging
+    void debugPrint();
+
   private:
     // These fields are required to make the move.
     U8 from;
