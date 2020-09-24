@@ -68,8 +68,10 @@ int playGame() {
     }
 
     // Draw notifications
-    if (p.getClock() >= 100u)
-      drawAvailable = true;
+    if (p.getClock() >= 100) {
+      std::cout << "The 50-move rule has been enforced." << std::endl;
+      return 0;
+    }
     if (drawOffered)
       std::cout << "You have offered a draw." << std::endl;
     if (drawAvailable)
