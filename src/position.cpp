@@ -114,6 +114,7 @@ void Position::initPieces() {
 // Prints the board to the console.
 void Position::printBoard() {
   // Upper boarder
+  std::cout << "============================" << std::endl;
   if (player == Color::BLACK)
     std::cout << "=>";
   else
@@ -341,7 +342,7 @@ std::vector<Move> Position::getLegalMoves() {
         // Mark move as a capture if there is an enemy piece there
         else if (enemies & mask)
           mt = MoveType::CAPTURE;
-        moves.push_back(Move(from, to, mt));
+        moves.push_back(Move(p, from, to, mt));
       }
     }
   }
@@ -367,13 +368,13 @@ std::vector<Move> Position::getLegalMoves() {
       int rank = squareToRank(from);
       // Check if double pawn push is possible
       if ((rank == homeRank) && (~occupied & (ONE << doubleFront)))
-        moves.push_back(Move(from, doubleFront, MoveType::DOUBLE_PAWN_PUSH));
+        moves.push_back(Move(p, from, doubleFront,MoveType::DOUBLE_PAWN_PUSH));
     }
     // Capture left
     if (file != 0) {
       int left = front - 1;
       if (left == epSquare) // ep capture left is possible
-        moves.push_back(Move(from, left, MoveType::EP_CAPTURE));
+        moves.push_back(Move(p, from, left, MoveType::EP_CAPTURE));
       else if (enemies & (ONE << left)) // regular capture left is possible
         addPawnMoves(moves, from, left);
     }
@@ -381,7 +382,7 @@ std::vector<Move> Position::getLegalMoves() {
     if (file != 7) {
       int right = front + 1;
       if (right == epSquare) // ep capture right is possible
-        moves.push_back(Move(from, right, MoveType::EP_CAPTURE));
+        moves.push_back(Move(p, from, right, MoveType::EP_CAPTURE));
       else if (enemies & (ONE << right)) // regular capture right is possible
         addPawnMoves(moves, from, right);
     }
@@ -404,12 +405,115 @@ std::vector<Move> Position::getLegalMoves() {
   return legalMoves;
 }
 
+// Searches the move list to see if one has a name that matches and returns its
+// index, or returns -1 if there is no match.
+int Position::lookupMove(std::string name, std::vector<Move>& moves) {
+  if (name.size() < 2)
+    return -1;
+
+  for (unsigned int i = 0; i < moves.size(); i++) {
+    if (moves[i].getName() == name)
+      return i;
+
+    // Check if user ommitted # or +
+    std::string ezName(moves[i].getName());
+    if (ezName.back() == '#' || ezName.back() == '+')
+      ezName.pop_back();
+    if (ezName == name)
+      return i;
+  }
+
+  return -1;
+}
+
+// Assigns a name to every move in the vector.
+void Position::nameMoves(std::vector<Move>& moves) {
+  for (unsigned int i = 0; i < moves.size(); i++) {
+    // Assign a level 1 name
+    nameMove(moves[i], 1);
+    Piece p = moves[i].getMovingPiece();
+
+    // Pawn moves and king moves are never ambiguous
+    if (p == Piece::W_PAWN || p == Piece::B_PAWN)
+      continue;
+    if (p == Piece::W_KING || p == Piece::B_KING)
+      continue;
+
+    // First ambiguity check: is there another piece with the same destination?
+    bool ambiguous = false;
+    for (unsigned int j = 0; j < moves.size(); j++) {
+      if (i == j)
+        continue;
+      if (p != moves[j].getMovingPiece())
+        continue;
+      if (moves[i].getTo() == moves[j].getTo())
+        ambiguous = true;
+    }
+
+    // Assign level 2 name if there is an ambiguity
+    if (!ambiguous)
+      continue;
+    nameMove(moves[i], 2);
+
+    // Second ambiguity check: Same start file and destination?
+    ambiguous = false;
+    for (unsigned int j = 0; j < moves.size(); j++) {
+      if (i == j)
+        continue;
+      if (p != moves[j].getMovingPiece())
+        continue;
+      if (squareToFile(moves[i].getFrom()) != squareToFile(moves[j].getFrom()))
+        continue;
+      if (moves[i].getTo() == moves[j].getTo())
+        ambiguous = true;
+    }
+
+    // Assign level 3 name if there is still ambiguity
+    if (!ambiguous)
+      continue;
+    nameMove(moves[i], 3);
+
+    // Third ambiguity check: Same start rank and destination?
+    ambiguous = false;
+    for (unsigned int j = 0; j < moves.size(); j++) {
+      if (i == j)
+        continue;
+      if (p != moves[j].getMovingPiece())
+        continue;
+      if (squareToRank(moves[i].getFrom()) != squareToRank(moves[j].getFrom()))
+        continue;
+      if (moves[i].getTo() == moves[j].getTo())
+        ambiguous = true;
+    }
+
+    // Assign level 4 name if there is somehow still ambiguity!
+    if (!ambiguous)
+      continue;
+    nameMove(moves[i], 4);
+  }
+}
+
 // Switches whose player's turn it is and returns that value.
 Color Position::switchPlayer() {
   if (player == Color::WHITE)
     player = Color::BLACK;
   else
     player = Color::WHITE;
+  return player;
+}
+
+// Returns the halfmove clock.
+U16 Position::getClock() {
+  return clock;
+}
+
+// Returns if the current player is in check.
+bool Position::inCheck() {
+  return inCheck(player);
+}
+
+// Returns the current player to move.
+Color Position::getPlayer() {
   return player;
 }
 
@@ -573,6 +677,13 @@ bool Position::inCheck(Color c) {
   return (k & b) != 0;
 }
 
+// Returns true if the current player whose turn it is to move is in checkmate.
+bool Position::inCheckmate() {
+  if (!inCheck(player))
+    return false;
+  return getLegalMoves().size() == 0;
+}
+
 // Returns true if the given move would not leave the friendly king in check.
 // It is assumed that the move otherwise accords with the rules of piece
 // movement in chess. 
@@ -632,13 +743,118 @@ void Position::addCastlingMoveIfAble(std::vector<Move>& v, Color c, int dir) {
 
   // Move is okay, add it to the list
   if (c == Color::WHITE && dir < 0)
-    v.push_back(Move(4, 2, MoveType::LONG_CASTLE));
+    v.push_back(Move(Piece::W_KING, 4, 2, MoveType::LONG_CASTLE));
   else if (c == Color::WHITE && dir >= 0)
-    v.push_back(Move(4, 6, MoveType::SHORT_CASTLE));
+    v.push_back(Move(Piece::W_KING, 4, 6, MoveType::SHORT_CASTLE));
   else if (c == Color::BLACK && dir < 0) 
-    v.push_back(Move(60, 58, MoveType::LONG_CASTLE));
+    v.push_back(Move(Piece::B_KING, 60, 58, MoveType::LONG_CASTLE));
   else if (c == Color::BLACK && dir >= 0) 
-    v.push_back(Move(60, 62, MoveType::SHORT_CASTLE));
+    v.push_back(Move(Piece::B_KING, 60, 62, MoveType::SHORT_CASTLE));
+}
+
+// Assigns an appropriate name with the appropriate specificity to the move.
+// This modifies the move's name in place as well as returns it.
+std::string Position::nameMove(Move& move, int nameLevel) {
+  // Identify piece which is moving
+  Piece p = getPiece(move.getFrom());
+  std::string name;
+
+  // Castling moves
+  if (move.getCastlingDirection() == -1)
+    name = "O-O-O";
+  else if (move.getCastlingDirection() == 1)
+    name = "O-O";
+
+  // Pawn moves
+  else if (p == Piece::W_PAWN || p == Piece::B_PAWN) {
+    char startFile = squareToFile(move.getFrom()) + 'a';
+    char endFile = squareToFile(move.getTo()) + 'a';
+    char endRank = squareToRank(move.getTo()) + '1';
+    if (move.isCapture())
+      name = name + startFile + 'x' + endFile + endRank;
+    else
+      name = name + endFile + endRank;
+
+    // Append promotion if necessary
+    switch (move.getPromotedPiece()) {
+      case Piece::W_QUEEN: 
+      case Piece::B_QUEEN:
+        name = name + "=Q";
+        break;
+      case Piece::W_ROOK: 
+      case Piece::B_ROOK:
+        name = name + "=R";
+        break;
+      case Piece::W_KNIGHT: 
+      case Piece::B_KNIGHT:
+        name = name + "=N";
+        break;
+      case Piece::W_BISHOP: 
+      case Piece::B_BISHOP:
+        name = name + "=B";
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Non-pawn moves
+  else {
+    // Name of piece as letter
+    switch (p) {
+      case Piece::W_QUEEN:
+      case Piece::B_QUEEN:
+        name = "Q";
+        break;
+      case Piece::W_KING:
+      case Piece::B_KING:
+        name = "K";
+        break;
+      case Piece::W_ROOK:
+      case Piece::B_ROOK:
+        name = "R";
+        break;
+      case Piece::W_KNIGHT:
+      case Piece::B_KNIGHT:
+        name = "N";
+        break;
+      case Piece::W_BISHOP:
+      case Piece::B_BISHOP:
+        name = "B";
+        break;
+      default:
+        break;
+    }
+    // Add starting file for levels 2 and 4
+    if (nameLevel == 2 || nameLevel == 4) {
+      char startingFile = squareToFile(move.getFrom()) + 'a';
+      name = name + startingFile;
+    }
+    // Add starting rank for levels 3 and 4
+    if (nameLevel == 3 || nameLevel == 4) {
+      char startingRank = squareToRank(move.getFrom()) + '1';
+      name = name + startingRank;
+    }
+    // Add x for captures
+    if (move.isCapture())
+      name = name + 'x';
+    // Add destination square
+    char endingFile = squareToFile(move.getTo()) + 'a';
+    char endingRank = squareToRank(move.getTo()) + '1';
+    name = name + endingFile + endingRank;
+  }
+
+  // To find out if + or # is needed, we must simulate the move.
+  makeMove(move);
+  if (inCheck(player)) {
+    if (getLegalMoves().size() == 0)
+      name = name + '#';
+    else
+      name = name + '+';
+  }
+  unmakeMove(move);
+  move.setName(name);
+  return name;
 }
 
 // Populates the attackOnEmpty array
@@ -797,6 +1013,7 @@ U64 Position::calculateBehindMask(int fromF, int fromR, int toF, int toR) {
 // will add four moves (one per promotion). Double pawn pushes and captures en
 // passant should be handled some other way.
 void Position::addPawnMoves(std::vector<Move>& moves, int from, int to) {
+  Piece pawn = (from < to) ? Piece::W_PAWN : Piece::B_PAWN;
   bool isPromotion = false;
   bool isCapture = false;
   if (squareToRank(to) == 0 || squareToRank(to) == 7)
@@ -806,24 +1023,24 @@ void Position::addPawnMoves(std::vector<Move>& moves, int from, int to) {
 
   // Promotions with Capture
   if (isPromotion && isCapture) {
-    moves.push_back(Move(from, to, MoveType::KNIGHT_PROMOTION_CAPTURE));
-    moves.push_back(Move(from, to, MoveType::BISHOP_PROMOTION_CAPTURE));
-    moves.push_back(Move(from, to, MoveType::ROOK_PROMOTION_CAPTURE));
-    moves.push_back(Move(from, to, MoveType::QUEEN_PROMOTION_CAPTURE));
+    moves.push_back(Move(pawn, from, to, MoveType::KNIGHT_PROMOTION_CAPTURE));
+    moves.push_back(Move(pawn, from, to, MoveType::BISHOP_PROMOTION_CAPTURE));
+    moves.push_back(Move(pawn, from, to, MoveType::ROOK_PROMOTION_CAPTURE));
+    moves.push_back(Move(pawn, from, to, MoveType::QUEEN_PROMOTION_CAPTURE));
   }
   // Promotions without Capture
   else if (isPromotion) {
-    moves.push_back(Move(from, to, MoveType::KNIGHT_PROMOTION));
-    moves.push_back(Move(from, to, MoveType::BISHOP_PROMOTION));
-    moves.push_back(Move(from, to, MoveType::ROOK_PROMOTION));
-    moves.push_back(Move(from, to, MoveType::QUEEN_PROMOTION));
+    moves.push_back(Move(pawn, from, to, MoveType::KNIGHT_PROMOTION));
+    moves.push_back(Move(pawn, from, to, MoveType::BISHOP_PROMOTION));
+    moves.push_back(Move(pawn, from, to, MoveType::ROOK_PROMOTION));
+    moves.push_back(Move(pawn, from, to, MoveType::QUEEN_PROMOTION));
   }
   // Captures without Promotion
   else if (isCapture)
-    moves.push_back(Move(from, to, MoveType::CAPTURE));
+    moves.push_back(Move(pawn, from, to, MoveType::CAPTURE));
   // Neither capture nor promotion
   else
-    moves.push_back(Move(from, to, MoveType::QUIET));
+    moves.push_back(Move(pawn, from, to, MoveType::QUIET));
 }
 
 // Returns if the given file-rank coordinate is inbounds

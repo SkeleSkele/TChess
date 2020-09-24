@@ -9,10 +9,12 @@ Move::Move() {
   type = MoveType::QUIET;
   savedFlags = 0;
   savedClock = 0;
+  movingPiece = Piece::NO_PIECE;
   capturedPiece = Piece::NO_PIECE;
 }
 
-Move::Move(U8 from, U8 to, MoveType type) {
+Move::Move(Piece movingPiece, U8 from, U8 to, MoveType type) {
+  this->movingPiece = movingPiece;
   this->from = from;
   this->to   = to;
   this->type = type;
@@ -27,6 +29,10 @@ void Move::setUnmakeInfo(U8 flags, U16 clock, Piece piece) {
   capturedPiece = piece;
 }
 
+void Move::setName(std::string name) {
+  this->name = name;
+}
+
 U8 Move::getFrom() {
   return from;
 }
@@ -39,6 +45,10 @@ MoveType Move::getType() {
   return type;
 }
 
+Piece Move::getMovingPiece() {
+  return movingPiece;
+}
+
 Piece Move::getCapturedPiece() {
   return capturedPiece;
 }
@@ -49,6 +59,10 @@ U8 Move::getFlags() {
 
 U16 Move::getClock() {
   return savedClock;
+}
+
+std::string Move::getName() {
+  return name;
 }
 
 // If the move is a promotion, this will return the Piece corresponding to the

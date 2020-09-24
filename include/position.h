@@ -18,6 +18,11 @@ class Position {
     void makeMove(Move&);
     void unmakeMove(Move&);
     std::vector<Move> getLegalMoves();
+    int lookupMove(std::string, std::vector<Move>&);
+    void nameMoves(std::vector<Move>&);
+    U16 getClock();
+    bool inCheck();
+    Color getPlayer();
 
     static void populateMaskArrays();
 
@@ -78,9 +83,13 @@ class Position {
     U64 getOccupied();
     U64 getOccupied(Color);
     bool inCheck(Color);
+    bool inCheckmate();
     bool isLegalMove(Move&);
     bool canCastle(Color, int);
     void addCastlingMoveIfAble(std::vector<Move>&, Color, int);
+
+    // Functions for naming moves
+    std::string nameMove(Move&, int);
     
     // Functions for calculating the masks
     static U64 calculateRookAttackOnEmpty(int, int);

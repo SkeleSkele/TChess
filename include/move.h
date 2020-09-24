@@ -20,19 +20,24 @@
 class Move {
   public:
     Move();
-    Move(U8, U8, MoveType);
+    Move(Piece, U8, U8, MoveType);
 
     void setUnmakeInfo(U8, U16, Piece);
-    U8 getFrom();
-    U8 getTo();
+    void setName(std::string);
+
+    U8       getFrom();
+    U8       getTo();
     MoveType getType();
-    Piece getCapturedPiece();
-    U8 getFlags();
-    U16 getClock();
+    Piece    getMovingPiece();
+    Piece    getCapturedPiece();
+    U8       getFlags();
+    U16      getClock();
+    std::string getName();
 
     Piece getPromotedPiece();
     bool isCapture();
     int getCastlingDirection();
+
 
     // debugging
     void debugPrint();
@@ -47,7 +52,11 @@ class Move {
     // be stored here.
     U8 savedFlags;
     U16 savedClock;
+    Piece movingPiece;
     Piece capturedPiece;
+
+    // Used for naming the move
+    std::string name;
 };
 
 #endif
